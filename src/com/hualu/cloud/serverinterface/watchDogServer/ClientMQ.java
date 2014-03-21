@@ -25,44 +25,34 @@ public class ClientMQ {
 	long bindTimeEx;//time that client bind mq
 	public static  memoryDB mdb = new memoryDB();
 	public static  boolean initBind = false;
+	private static String[] typeMQClientList = {"Tomcat","Alarm"};
 //	private memoryDB mdb = null;
 	
 	public static boolean clearRabbitMQBind(){
 		ClientMQ clientMQ=new ClientMQ();
 		logger.info("start and first use redis");
-		String hostnameList = clientMQ.getClientFromdb("Tomcat");
-		logger.info("end use redis");
-		logger.info(hostnameList);
-		if(hostnameList==null){
-			logger.warn("read redis is fault ,data is null");
-			return false;
-		}
-		String htNameArr[] = hostnameList.split(";");
-		for(int i=0;i<htNameArr.length;i++){
-			logger.info(htNameArr[i]);
-			clientMQ.setHostname(htNameArr[i]);
-			if(connection==null){
-				connection=createConnection();
+		for(int j=0;j<typeMQClientList.length;j++){
+			String hostnameList = clientMQ.getClientFromdb(typeMQClientList[j]);
+			logger.info("end use redis");
+			logger.info(hostnameList);
+			if(hostnameList==null){
+				logger.warn("read redis is fault ,data is null");
+				return false;
 			}
-			clientMQ.executeUnBind();
-		}
-		hostnameList = clientMQ.getClientFromdb("Alarm");
-		if(hostnameList==null){
-			logger.warn("read redis is fault ,data is null");
-			
-			return false;
-		}
-//		logger.info(hostnameList);
-		htNameArr=null;
-		htNameArr = hostnameList.split(";");
-		for(int i=0;i<htNameArr.length;i++){
-			logger.info(htNameArr[i]);
-			clientMQ.setHostname(htNameArr[i]);
-			if(connection==null){
-				connection=createConnection();
+			else if(hostnameList=="ERRORERROR"){
+				logger.warn("read redis is fault ,data is ERRORERROR");
 			}
-			clientMQ.executeUnBind();
+			String htNameArr[] = hostnameList.split(";");
+			for(int i=0;i<htNameArr.length;i++){
+				logger.info(htNameArr[i]);
+				clientMQ.setHostname(htNameArr[i]);
+				if(connection==null){
+					connection=createConnection();
+				}
+				clientMQ.executeUnBind();
+			}
 		}
+
 		initBind = true;
 		return true;
 	}
@@ -88,16 +78,8 @@ public class ClientMQ {
 	 * NO USE
 	 */
 	public String getClientFromdb(String str){
-		if(str=="Alarm"){
-			return mdb.get("clientAlarmList");
-		}
-		else if(str == "Tomcat"){
-			return mdb.get("clientTomcatList");
-		}
-		else{
-			return mdb.get("clientTomcatList");
-		}
-//		return null;
+		String keyMQClient = "client"+str+"List";
+		return mdb.get(keyMQClient);
 	}
 	
 	public void setHostname(String hostname){
@@ -229,53 +211,26 @@ public class ClientMQ {
 		logger.debug(hostnamelist+"  "+hostarray.length);
 		int i=hostarray.length;
 		try{
-//			if(connection==null){
-				ConnectionFactory factory = new ConnectionFactory();
-				switch (i){
-					case 2:
-						String[] host21=hostarray[0].split(":");
-						String[] host22=hostarray[1].split(":");
-						Address[] addrArr2 = new Address[]{ new Address(host21[0], Integer.parseInt(host21[1]))
-				        , new Address(host22[0], Integer.parseInt(host22[1]))};
-						logger.debug("两个消息节点"+host21[0]+":"+host21[1]+","+host22[0]+":"+host22[1]);
-						connection = factory.newConnection(addrArr2);
-						break;
-					case 3:
-						String[] host31=hostarray[0].split(":");
-						String[] host32=hostarray[1].split(":");
-						String[] host33=hostarray[2].split(":");
-						Address[] addrArr3 = new Address[]{ new Address(host31[0], Integer.parseInt(host31[1]))
-				        , new Address(host32[0], Integer.parseInt(host32[1]))
-						, new Address(host33[0], Integer.parseInt(host33[1]))};
-						logger.debug("三个消息节点"+host31[0]+":"+host31[1]+","+host32[0]+":"+host32[1]+","+host33[0]+":"+host33[1]);
-						connection = factory.newConnection(addrArr3);
-						break;
-					case 4:
-						String[] host41=hostarray[0].split(":");
-						String[] host42=hostarray[1].split(":");
-						String[] host43=hostarray[2].split(":");
-						String[] host44=hostarray[3].split(":");
-						Address[] addrArr4 = new Address[]{ new Address(host41[0], Integer.parseInt(host41[1]))
-				        , new Address(host42[0], Integer.parseInt(host42[1]))
-						, new Address(host43[0], Integer.parseInt(host43[1]))
-						, new Address(host44[0], Integer.parseInt(host44[1]))};
-						logger.debug("四个消息节点"+host41[0]+":"+host41[1]+","+host42[0]+":"+host42[1]+","+host43[0]+":"+host43[1]+","+host44[0]+":"+host44[1]);
-						connection = factory.newConnection(addrArr4);
-						break;
-						default:
-						String[] host11=hostarray[0].split(":");
-						factory.setHost(host11[0]);
-		//				logger.debug("一个消息节点"+host11[0]+":"+host11[1]);
-						logger.info("一个消息节点"+host11[0]+":"+host11[1]);
-						connection = factory.newConnection();
-//					}
-			}
-		}catch(IOException e) {
+			    Address[] addrArr =new Address[i] ;
+			     
+			    for (int j = 0; j < i; j++){
+			    	 String[] host =hostarray[j].split(":");
+			    	 addrArr[j] = new Address(host[0],Integer.parseInt(host[1]));
+			    }
+				try{
+					ConnectionFactory factory = new ConnectionFactory();
+					connection=factory.newConnection(addrArr);
+					return connection;
+				}catch(IOException e) {
+					// TODO Auto-generated catch block
+					logger.warn("创建消息链接时异常："+e.getMessage());
+					return null;
+				}	     
+		}catch(Exception ee) {
 			// TODO Auto-generated catch block
-			logger.warn("创建消息链接时异常："+e.getMessage());
+			logger.warn("创建消息链接时异常："+ee.getMessage());
 			return null;
 		}
-		return connection;
 	}
 	
 	public static Channel createChannel(){
@@ -290,7 +245,7 @@ public class ClientMQ {
 		}
 		return channel;
 	}
-	/* ######
+	/** ######
 	 * 
 	 */
 	
@@ -301,7 +256,7 @@ public class ClientMQ {
 		}
 		return true;
 	}
-	/* ######
+	/** ######
 	 * unbind timeout client
 	 * return 
 	 * 		succeed:true
@@ -322,7 +277,7 @@ public class ClientMQ {
 		}
 		return true;
 	}
-	/* ###### important (opType=2)
+	/** ###### important (opType=2)
 	 * unbind all or update all
 	 * 		opType:the operation of client(1,update;2,delete)
 	 */
@@ -353,7 +308,7 @@ public class ClientMQ {
 		}
 		return true;
 	}
-	/* ###### important (opType=1)
+	/** ###### important (opType=1)
 	 * parameter:
 	 * 		clientHostname: the hostname of client 
 	 * 		opType:the operation of client(1,update;2,delete)
@@ -380,7 +335,7 @@ public class ClientMQ {
 		}
 		return true;
 	}
-	/* NO USE
+	/** NO USE
 	 * 
 	 */
 	static void delClientMQList(ClientMQ clientObj){
@@ -400,7 +355,7 @@ public class ClientMQ {
 		}
 	}
 	
-	/* ######
+	/** ######
 	 * check new client and notify ,add one
 	 * parameter:
 	 * 		clientObj:new active ClientMQ object 
@@ -417,7 +372,6 @@ public class ClientMQ {
 				clientObjExisted=true;
 				//update clientMQ time
 				client.updateClientMQTimeEx();
-				client.bindTimeEx=System.currentTimeMillis();
 				break;
 			}
 		}	
@@ -428,7 +382,7 @@ public class ClientMQ {
 			list.add(clientObj);
 		}
 	}
-	/*
+	/**
 	 * 
 	 */
 	public static boolean checkClientMQ(ClientMQ clientObj){
@@ -442,9 +396,9 @@ public class ClientMQ {
 		}
 		return false;
 	}
-/*
- * print listClientMQ
- */
+	/**
+	 * print listClientMQ
+	 */
 	public static String printClientMQList(){
 		 System.out.println(listClientMQ.size());
 		Iterator<ClientMQ> it = listClientMQ.iterator();
@@ -469,7 +423,7 @@ public class ClientMQ {
 	  String dateString = formatter.format(currentTime);
 	  return dateString;
 	 }
-	 /*
+	 /**
 	  * 
 	  */
 	 public static boolean printlistClientMQ(){

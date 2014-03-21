@@ -42,11 +42,18 @@ public class executer implements Runnable {
     public void run(){   
     	// TODO Auto-generated method stub 
 		//消息队列显相关参数
-		Connection connection;
+    	Connection connection = queueListServer.connection;
+    	if (connection==null ||!connection.isOpen()){
+			connection=queueListServer.getConnection();
+			if(connection==null){
+				logger.error("消息服务器连接异常,休眠一秒后会继续链接，请核查！");
+				return;
+			}
+    	}
+	    
 		try {
-			connection = queueListServer.getConnection();
-		    Channel channel= connection.createChannel();
-		    
+			
+			Channel channel= connection.createChannel();
 			//获取response队列的名称
 			String ret[]=message.split(mymanager.msgsplit);
 			String responseQueueName=ret[0];
@@ -193,10 +200,6 @@ public class executer implements Runnable {
 			
 			//关闭消息通道和连接
 			channel.close();
-			connection.close();
-		//}// catch (IOException e) {
-			// TODO Auto-generated catch block
-			//e.printStackTrace();
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			logger.info("executer Exception:"+e.getMessage());
