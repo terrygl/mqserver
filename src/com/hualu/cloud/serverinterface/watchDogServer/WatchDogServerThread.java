@@ -39,30 +39,12 @@ public class WatchDogServerThread extends Thread{
 	java.lang.InterruptedException {
 //--------------------定时写redis---------------------
 		Timer timer = new Timer();
-//		logger.info(Long.parseLong(staticparameter.getValue("serverPollInterval","10000")));
 		timer.schedule(new WatchDogServer(),0,Long.parseLong(staticparameter.getValue("serverPollInterval","10000")));
 ////****USE TIMERTASK ******
-//		logger.info("WatchDogServerThread before WatchDogClientMQList() timer:"+getNowDate());
-//		logger.info(Long.parseLong(staticparameter.getValue("clientUseRabbitmqPollInterval","10000")));
 //		timer.schedule(new WatchDogClientMQList(),0, Long.parseLong(staticparameter.getValue("clientUseRabbitmqPollInterval","10000")));
 //		logger.info("WatchDogServerThread after WatchDogClientMQList() timer:"+getNowDate());
 //---------------------------------------------------
 //**************rabbitmq connection,only one****************
-//		while(true){
-//			connection = getConnection();
-//			if(connection!=null)
-//				break;
-//			else{
-//				logger.error("MQServer消息服务器连接异常,休眠一秒后会继续链接，请核查！");
-//				try {
-//					Thread.sleep(1000);
-//				} catch (InterruptedException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				}
-//			}
-//		}
-		System.out.println(" [*] Waiting for messages. To exit press CTRL+C");
 		while(true){
 			Connection connection =ClientMQ.connection;
 			try{
@@ -85,13 +67,7 @@ public class WatchDogServerThread extends Thread{
 				logger.error("create rabbitmq connection is fault");
 			
 			}	
-			try{
-				Thread.sleep(2000);
-				logger.info("NORMAL:wait for 2 seconds ,continue");
-			}
-			catch(Exception e){
-				logger.error("thread sleep is fault");
-			}
+
 			//****** create channel ******
 			Channel channel =null;
 			try{
@@ -111,10 +87,7 @@ public class WatchDogServerThread extends Thread{
 		//  QueueingConsumer consumer = new QueueingConsumer(channel);
 		//	read message from channel
 		//	channel.basicConsume(QUEUE_NAME_RESPONSE, true, consumer);
-			long starttime= System.currentTimeMillis();
-		//	int step=0;
-		//judge timeout
-		   
+   
 		    	//receive message from request queue;
 			GetResponse response=null;
 			try{
@@ -123,28 +96,13 @@ public class WatchDogServerThread extends Thread{
 			catch(Exception e){
 				logger.error("rabbitmq response is fault ");
 			}
-			
 
-			
 				//check mqstate		
 			if(response==null){
 				try{
 		//				long endtime = System.currentTimeMillis();
-		//****** IF DO NOT USE TIMERTASK ******
-		//				if(endtime-starttime>=20000){// rabbitmq timeout 20000ms
-		//					starttime=System.currentTimeMillis();
-		//					//previous version use redis
-		//					
-		//					//UNBIND all exchange and queue of ClientMQ in listClientMQ
-		//					//RATHER THAN the clientHostname in redis
-		//					ClientMQ.printClientMQList();
-		//					ClientMQ.operateClientMQList(2);
-		//					ClientMQ.printClientMQList();
-		//				}
-						//reading rabbitmq /execute once every 0.5 seconds if get no response 
-		//****** IF DO NOT USE TIMERTASK ******
-					Thread.sleep(1000);
-					logger.info("WatchDogServerThread do not receive message via RabbitMQ , wait for 1 second");
+					Thread.sleep(500);
+					logger.info("WatchDogServerThread do not receive message via RabbitMQ , wait for 0.5 second");
 				}
 				catch(Exception e){
 					//return false;
@@ -154,7 +112,6 @@ public class WatchDogServerThread extends Thread{
 			else{
 				logger.info("WatchDogServerThread receive a message at:"+ClientMQ.getNowDate());
 				//when receive message ,initial starttime
-				starttime = System.currentTimeMillis();
 				String strMsg=new String(response.getBody());
 				logger.info(strMsg);
 				//----------staticparameter.msgsplit
@@ -165,22 +122,12 @@ public class WatchDogServerThread extends Thread{
 		//**********ADD tmpCliMQ to ClientList***************
 				ClientMQ.operateClientMQList(hostnameClientMQ,1);
 		//**********CHECK every client in clientList and unbind overtime one
-		//			int sizelistClientMQ = ClientMQ.listClientMQ.size();
-		//****** IF DO NOT USE TIMETASK ******
-		//			if(++step%(sizelistClientMQ*2)==0){
-		//				ClientMQ.operateClientMQListTimeout();
-		//				ClientMQ.printClientMQList();
-		//				logger.info(step);
-		//				step=0;
-		//			}
-		//****** IF DO NOT USE TIMERTASK ******			
-					//write message("OK") to temporary queue
+				//write message("OK") to temporary queue
 				String ackMessage  = "OK";
 				String queueName = str[0];
 				//send message to response queue
 				try{
 					channel.basicPublish("",queueName, null,ackMessage.getBytes() );
-		//				Thread.sleep(2000);
 				}
 				catch(IOException e){
 					channel.close();
