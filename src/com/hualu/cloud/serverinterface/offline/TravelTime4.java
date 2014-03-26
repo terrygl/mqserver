@@ -13,6 +13,8 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.log4j.Logger;
+
 import com.ehl.itgs.interfaces.bean.QueryInfo;
 import com.hualu.cloud.serverinterface.queueListServer;
 import com.hualu.cloud.serverinterface.offline.base;
@@ -21,7 +23,6 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.MessageProperties;
 import com.hualu.cloud.basebase.staticparameter;
-
 
 public class TravelTime4 {
 	
@@ -55,6 +56,8 @@ public class TravelTime4 {
     	conf.set("hbase.master", master); 
     }
     
+    public static Logger logger = Logger.getLogger(TravelTime4.class);
+    
     public TravelTime4(String time) {
     	startTime = time;
     }
@@ -64,22 +67,21 @@ public class TravelTime4 {
     }
 	
     public int rabbittopic(String topic,String msg){
-
         try {
-        	String exchangename=staticparameter.getValue("warnExchange","warnExchange");
-            Connection connection = queueListServer.getConnection();
+    		String exchangename=staticparameter.getValue("warnExchange", "warnExchange");
+            Connection connection = queueListServer.getConnection(); 
             Channel channel = connection.createChannel();
-            channel.exchangeDeclare(exchangename, "topic");;
+            channel.exchangeDeclare(exchangename, "topic");
             String message = msg;
             channel.basicPublish(exchangename,topic, MessageProperties.PERSISTENT_TEXT_PLAIN,message.getBytes()); 
-            System.out.println("TravelTime4.java rabbittopic():send message " + message);
+            System.out.println("cpbjPE.java rabbittopic():send message " + message);
             channel.close();
             connection.close();
             return 1;
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-            return -1;
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                    return -1;
         } 
     }
 	
@@ -111,6 +113,8 @@ public class TravelTime4 {
     	ArrayList<String> timetravellist = new ArrayList<String>(); //车牌号+过车时间+旅行时间
     	ArrayList<String> timetravellist_available = new ArrayList<String>();
     	int inputORnot = 1; //=1才计算和入库
+    	
+    	String current1 = base.currentTime();
     	
     	HTable table = new HTable(conf, "by_flow");
     	
@@ -213,21 +217,21 @@ public class TravelTime4 {
     		inputORnot = 0;
     		traveltime = 0;
     	}
-    	System.out.println("旅行时间 = "+traveltime+"秒");
+    	logger.info("旅行时间 = "+traveltime+"秒");
     	if(linkLength>0 && traveltime>0) {
     		avgtraveltpeed = (double)(linkLength/traveltime)*3.6; //行驶车速，单位km/h
     	} else {
     		inputORnot = 0;
     		avgtraveltpeed = 0.0;
     	}
-    	System.out.println("瞬时行驶速度 = "+avgtraveltpeed+"km/h");
+    	logger.info("瞬时行驶速度 = "+avgtraveltpeed+"km/h");
     	if(traveltime>0){
     		delayedtime = traveltime-normalTravelTime>0?traveltime-normalTravelTime:0; //延误时间，单位是秒
     	} else {
     		inputORnot = 0;
     		delayedtime = 0;
     	}
-    	System.out.println("延误时间 = "+delayedtime);     
+    	logger.info("延误时间 = "+delayedtime);     
     	String updateTime = base.currentTime();		  	
     	
 		String msg = "linkId="+linkId+";"+
@@ -261,6 +265,11 @@ public class TravelTime4 {
 			cnt = 0;
 			longmsg = "";
 		}
+		
+		String current2 = base.currentTime();
+		
+		long inter = Long.parseLong(current2)-Long.parseLong(current1);
+		System.out.println("本次计算旅行时间耗时"+inter+"毫秒");
 		
     	carrecordA.clear();
     	carrecordB.clear();

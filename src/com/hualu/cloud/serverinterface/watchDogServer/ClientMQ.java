@@ -134,7 +134,7 @@ public class ClientMQ {
 				}
 				Channel channel = connection.createChannel();
 				
-				channel.exchangeDeclare(exchange, "topic");
+//				channel.exchangeDeclare(exchange, "topic");
 			    String[] topics=topicsArr[i].split(",");
 			    int topicnum=topics.length;
 			    for(int j=0;j<topicnum;j++)
@@ -189,7 +189,7 @@ public class ClientMQ {
 				}
 		Channel channel = connection.createChannel();		
 				
-				channel.exchangeDeclare(exchange, "topic");
+//				channel.exchangeDeclare(exchange, "topic");
 			    String[] topics=topicsArr[i].split(",");
 			    int topicnum=topics.length;
 			    for(int j=0;j<topicnum;j++){

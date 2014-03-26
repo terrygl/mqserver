@@ -1,8 +1,10 @@
 package com.hualu.cloud.serverinterface.offline;
 
 import java.io.IOException;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.log4j.Logger;
 
 import org.apache.hadoop.conf.Configuration;
@@ -12,11 +14,10 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
-
 import com.hualu.cloud.basebase.staticparameter;
 
 
-public class getTravelTime extends TimerTask {
+public class getTravelTime {
 	static String startTime; //开始时间
 	static String currentTime; //现在时刻
 	static String endTime; //结束时间
@@ -66,75 +67,79 @@ public class getTravelTime extends TimerTask {
     		linkconfignum++;
     	}
     	rs.close();	
-    	System.out.println("Hbase的by_linkconfig表中的row数="+linkconfignum);
-    	
-		Timer timer = new Timer();
-		getTravelTime te = new getTravelTime();
-	    timer.schedule(te, 0, frequenceTime*1000); //frequenceTime秒调用一次run()
+    	logger.info("Hbase的by_linkconfig表中的row数="+linkconfignum); 
+    	ScheduledExecutorService service = Executors.newScheduledThreadPool(20);
+		//每隔frequenceTime秒钟执行一次ScheduledExecutorTask
+		service.scheduleWithFixedDelay(new ScheduledExecutorTask(), 0, 
+				frequenceTime, TimeUnit.SECONDS);
 	    return true;
 	}
-	 
-	public void run() {		
-		currentTime = base.currentTime();
-		if((currentORgivenTime.compareTo(currentTime)) >= 0 || currentORgivenTime.equals("0") ) {
-			endTime = currentTime;  //结束时间
-		} else {
-			endTime = currentORgivenTime;
-		}
-		
-		//7:00-21:00为白天
-		int hourFlag = Integer.parseInt(endTime.substring(8, 10)); //取小时字段
-		int timeSpan = 0;
-		if(hourFlag>=7 && hourFlag<=21){
-			timeSpan = staticparameter.getIntValue("dayTimeSpan",5); //白天的时间段取5分钟
-		} else {
-			timeSpan = staticparameter.getIntValue("nightTimeSpan",10); //夜间的时间段取10分钟
-		}
-		startTime = base.setString(endTime, timeSpan); //结束时间的前timeSpan分钟作为开始时间
-		
-    	HTable config_table = null;;
-		try { //从by_linkconfig表中取出线路信息
-			config_table = new HTable(conf, "by_linkconfig"); 
-			Scan s = new Scan(); 
-			s.setMaxVersions(1);
-			s.addColumn(Bytes.toBytes("cf"), Bytes.toBytes("info"));
-			ResultScanner ss = config_table.getScanner(s);  
-			for(Result r:ss){
-				String linkrecord[] = new String(r.getValue(Bytes.toBytes("cf"),Bytes.toBytes("info"))).split(",");
+	
+	public class ScheduledExecutorTask implements Runnable {
 
-				String linkId = linkrecord[0];
-				String linkName = linkrecord[1];
-				String tgs[] = new String[2];
-				tgs[0] = linkrecord[2];
-				tgs[1] = linkrecord[3];
-				String travelOrientation[] = new String[2];
-				travelOrientation[0] = linkrecord[4];
-				travelOrientation[1] = linkrecord[5];
-				String maxSpeed = linkrecord[6];
-				String linkLengthStr = linkrecord[7];
-				String bztgsj = linkrecord[8];
-				String linknum = linkconfignum+"";
-				String linkinfo = linkId+","+linkName+","+linkLengthStr+","+maxSpeed+","+linknum;				
-				TravelTime4 tt = new TravelTime4(startTime);
-				try {
-					System.out.println("开始时间="+startTime+" | 结束时间="+endTime);
-					tt.calTravelTime(tgs, travelOrientation, endTime, linkinfo, bztgsj, null);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+		public void run() {
+			currentTime = base.currentTime();
+			if((currentORgivenTime.compareTo(currentTime)) >= 0 || currentORgivenTime.equals("0") ) {
+				endTime = currentTime;  //结束时间
+			} else {
+				endTime = currentORgivenTime;
 			}
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} finally {
-			if (config_table != null) {  
-	        	try {
-					config_table.close();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}  
-	        }
+			
+			//7:00-21:00为白天
+			int hourFlag = Integer.parseInt(endTime.substring(8, 10)); //取出小时段
+			int timeSpan = 0;
+			if(hourFlag>=7 && hourFlag<=21){
+				timeSpan = staticparameter.getIntValue("dayTimeSpan",5); //白天时间段为5分钟
+			} else {
+				timeSpan = staticparameter.getIntValue("nightTimeSpan",10);  //夜间时间段为10分钟
+			}
+			
+			startTime = base.setString(endTime, timeSpan); //结束时间的前timeSpan分钟作为开始时间
+			
+	    	HTable config_table = null;;
+			try { //从by_linkconfig表中取出线路信息
+				config_table = new HTable(conf, "by_linkconfig"); 
+				Scan s = new Scan(); 
+				s.setMaxVersions(1);
+				s.addColumn(Bytes.toBytes("cf"), Bytes.toBytes("info"));
+				ResultScanner ss = config_table.getScanner(s);  
+				for(Result r:ss){
+					String linkrecord[] = new String(r.getValue(Bytes.toBytes("cf"),Bytes.toBytes("info"))).split(",");
+
+					String linkId = linkrecord[0];
+					String linkName = linkrecord[1];
+					String tgs[] = new String[2];
+					tgs[0] = linkrecord[2];
+					tgs[1] = linkrecord[3];
+					String travelOrientation[] = new String[2];
+					travelOrientation[0] = linkrecord[4];
+					travelOrientation[1] = linkrecord[5];
+					String maxSpeed = linkrecord[6];
+					String linkLengthStr = linkrecord[7];
+					String bztgsj = linkrecord[8];
+					String linknum = linkconfignum+"";
+					String linkinfo = linkId+","+linkName+","+linkLengthStr+","+maxSpeed+","+linknum;				
+					TravelTime4 tt = new TravelTime4(startTime);
+					try {
+						System.out.println("开始时间="+startTime+" | 结束时间="+endTime);
+						tt.calTravelTime(tgs, travelOrientation, endTime, linkinfo, bztgsj, null);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} finally {
+				if (config_table != null) {  
+		        	try {
+						config_table.close();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}  
+		        }
+			}
 		}
 	}
 }

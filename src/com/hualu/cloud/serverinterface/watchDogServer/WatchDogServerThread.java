@@ -109,7 +109,7 @@ public class WatchDogServerThread extends Thread{
 				try{
 		//				long endtime = System.currentTimeMillis();
 					Thread.sleep(500);
-					logger.info("WatchDogServerThread do not receive message via RabbitMQ , wait for 0.5 second");
+//					logger.info("WatchDogServerThread do not receive message via RabbitMQ , wait for 0.5 second");
 				}
 				catch(Exception e){
 					//return false;
