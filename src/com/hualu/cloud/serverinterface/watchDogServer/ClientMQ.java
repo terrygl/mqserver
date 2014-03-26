@@ -423,9 +423,9 @@ public class ClientMQ {
 		bindTimeEx = System.currentTimeMillis();
 	}
 	 /**
-	  * 获取现在时间
+	  * get current time
 	  * 
-	  * @return 返回时间类型 yyyy-MM-dd HH:mm:ss
+	  * @return date formate  is  yyyy-MM-dd HH:mm:ss
 	  */
 	 public static String getNowDate() {
 	  Date currentTime = new Date();
